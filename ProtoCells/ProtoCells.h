@@ -17,6 +17,7 @@
 #include <cstring>
 #include <map>
 #include <CppConsoleTable.hpp>
+#include <optional>
 
 using ConsoleTable = samilton::ConsoleTable;
 
@@ -241,8 +242,10 @@ private:
 // Maximum possible size of textures affects graphics quality
         score += deviceProperties.limits.maxImageDimension2D;
 
+// Find queue families
+        QueueFamilyIndices indices = findQueueFamilies(device);
 // Application can't function without geometry shaders
-        if (!deviceFeatures.geometryShader) {
+        if (!deviceFeatures.geometryShader || !indices.isComplete()) {
             return 0;
         }
 
@@ -299,6 +302,40 @@ private:
             throw std::runtime_error("Failed to find a suitable GPU!");
         }
 
+    }
+
+    struct QueueFamilyIndices {
+        std::optional<uint32_t> graphicsFamily;
+
+        bool isComplete() {
+            return graphicsFamily.has_value();
+        }
+    };
+
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+        QueueFamilyIndices indices;
+        // Logic to find queue family indices to populate struct with
+
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+        int i = 0;
+        for (const auto& queueFamily : queueFamilies) {
+            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                indices.graphicsFamily = i;
+            }
+
+            if (indices.isComplete()) {
+                break;
+            }
+
+            i++;
+        }
+
+        return indices;
     }
 
     void initVulkan() {
