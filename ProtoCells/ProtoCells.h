@@ -19,6 +19,7 @@
 #include <CppConsoleTable.hpp>
 #include <optional>
 #include <set>
+#include <cstdint> 
 
 using ConsoleTable = samilton::ConsoleTable;
 
@@ -263,7 +264,27 @@ private:
 
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
 // Check which presentation modes are available
-        return VK_PRESENT_MODE_FIFO_KHR;
+	for (const auto& availablePresentMode : availablePresentModes) {
+        	if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            		return availablePresentMode;
+        	}
+    	}
+	    
+	    
+        return VK_PRESENT_MODE_IMMEDIATE_KHR;
+    }
+	
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
+	if (capabilities.currentExtent.width != UINT32_MAX) {
+        	return capabilities.currentExtent;
+    	} else {
+        	VkExtent2D actualExtent = {WIDTH, HEIGHT};
+
+        	actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
+        	actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+
+        	return actualExtent;
+    	}
     }
 	
     bool isDeviceSuitable(VkPhysicalDevice device) {
@@ -494,6 +515,27 @@ private:
             throw std::runtime_error("failed to create window surface!");
         }
     }
+	void createSwapChain() {
+// Query swap chain support
+    		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+
+// Pick the right formats
+    		VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+    		VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+    		VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+		
+// Choose the right image count
+		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+		
+// Check we aren't over the maximum
+		if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+    			imageCount = swapChainSupport.capabilities.maxImageCount;
+		}
+// Create the structure for creating the swap chain
+		VkSwapchainCreateInfoKHR createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		createInfo.surface = surface;
+	}
     	
     void initVulkan() {
 // Create the vulkan instance
@@ -510,6 +552,9 @@ private:
 
 // Create the logical device
         createLogicalDevice();
+
+// Create the swap chain
+	createSwapChain();
     }
 
     void mainLoop() {
